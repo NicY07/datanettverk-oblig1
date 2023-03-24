@@ -1,0 +1,40 @@
+from socket import *
+import threading
+
+# Function to handle client requests in a separate thread
+# connection = used to send and receive data from the client
+# addr = address of the client that has connected to the server
+def handleClient(connection, addr):
+    try:
+        request = connection.recv(4096).decode() # Receive the client request
+    
+        filename = request.split()[1][1:] # Split request to extract requested file name
+
+        with open(filename, 'rb') as f: # Open the requested file and read its content
+            fileContents = f.read()
+
+        # Create a HTTP response with the file contents
+        message = b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + fileContents
+        connection.sendall(message) # Send response back to the client
+
+    except:
+        # Creates a 500 response if an exception occurs
+        message = b"HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/html\r\n\r\n<h1>500 Internal Server Error</h1>"
+        connection.sendall(message)
+
+    connection.close() # Close client connection
+
+def main():
+    serverSocket = socket(AF_INET, SOCK_STREAM) # Create TCP connection
+    serverSocket.bind(('localhost', 8080)) # Bind socket to fixed port
+    serverSocket.listen() # Listen for incoming connections
+
+    # Loop endlessly to accept incoming connections
+    while True:
+        connection, addr = serverSocket.accept() # Accept incoming connection
+        # Create new thread to handle the client request
+        clientThread = threading.Thread(target=handleClient, args=(connection, addr))
+        clientThread.start()
+
+if __name__ == '__main__':
+    main()
